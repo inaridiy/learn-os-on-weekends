@@ -96,13 +96,9 @@ trap_handler(void)
 void kernel_main(void)
 {
   memset(__bss, 0, (size_t)__bss_end - (size_t)__bss);
-
   WRITE_CSR(stvec, trap_handler);
 
-  paddr_t paddr0 = alloc_pages(2);
-  paddr_t paddr1 = alloc_pages(1);
-  printf("alloc_pages test: paddr0=%x\n", paddr0);
-  printf("alloc_pages test: paddr1=%x\n", paddr1);
+  uint32_t *kernel_pt = alloc_pages(1);
 
   PANIC("I'm here!\n");
 }
@@ -148,9 +144,28 @@ size_t alloc_pages(size_t page_num)
   next_alloc += page_num * PAGE_SIZE;
   if (next_alloc > (size_t)__free_ram_end)
   {
-    PANIC("Out of memory!\n");
+    PANIC("alloc_pages: Out of memory!\n");
   }
 
   memset((void *)ret, 0, page_num * PAGE_SIZE);
   return ret;
+}
+
+void map_pages(uint32_t *table1, paddr_t paddr, vaddr_t vaddr, uint32_t flags)
+{
+  uint32_t vpn1 = (vaddr >> 22) & 0x3ff;
+  uint32_t vpn0 = (vaddr >> 12) & 0x3ff;
+
+  if (!is_aligned(vaddr, PAGE_SIZE) || !is_aligned(paddr, PAGE_SIZE))
+  {
+    PANIC("map_pages: address not aligned: vaddr=%x, paddr=%x\n", vaddr, paddr);
+  }
+
+  if ((table1[vpn1] & PAGE_V) == 0)
+  {
+    uint32_t pt_paddr = alloc_pages(1);
+    table1[vpn1] = ((pt_paddr >> 12) << 10) | PAGE_V;
+  }
+  uint32_t *table0 = (uint32_t *)((table1[vpn1] >> 10) << 12);
+  table0[vpn0] = ((paddr >> 12) << 10) | flags | PAGE_V;
 }
