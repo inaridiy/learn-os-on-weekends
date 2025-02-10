@@ -9,6 +9,7 @@ extern char __free_ram[], __free_ram_end[];
 extern char _binary_shell_bin_start[], _binary_shell_bin_size[];
 
 size_t alloc_pages(size_t page_num);
+void map_pages(uint32_t *table1, paddr_t paddr, vaddr_t vaddr, uint32_t flags);
 
 void trap_main(void)
 {
